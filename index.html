@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Azure Services Availability on Azure Local</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+            box-sizing: border-box;
+        }
+
+        .header-content {
+            text-align: left;
+            background: linear-gradient(135deg, #0078d4 0%, #005a9e 100%);
+            color: #ffffff;
+            padding: 24px 32px 16px 32px;
+            border-bottom: 3px solid #005a9e;
+        }
+
+        h1 {
+            font-size: 26px;
+            margin: 0 0 6px 0;
+            font-weight: 600;
+        }
+
+        .header-content p {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #d0e8ff;
+            max-width: 1100px;
+        }
+
+        .header-content a {
+            color: #7ecfff;
+            text-decoration: none;
+        }
+        .header-content a:hover {
+            text-decoration: underline;
+        }
+
+        .filters {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 32px;
+            background: #fff;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .filter-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            padding: 8px 14px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 260px;
+            color: #333;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 2px rgba(0,120,212,0.15);
+        }
+
+        select {
+            padding: 8px 14px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            color: #333;
+            background: #fff;
+        }
+        select:focus {
+            outline: none;
+            border-color: #0078d4;
+        }
+
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #444;
+        }
+
+        .dot-ga {
+            height: 12px;
+            width: 12px;
+            background-color: #107c10;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot-preview {
+            height: 12px;
+            width: 12px;
+            background-color: #0078d4;
+            display: inline-block;
+            border-radius: 2px;
+        }
+
+        .dot-hybrid {
+            height: 12px;
+            width: 12px;
+            background-color: #ff8c00;
+            display: inline-block;
+            border-radius: 50%;
+            border: 2px solid #e07000;
+            box-sizing: border-box;
+        }
+
+        .dot-na {
+            height: 12px;
+            width: 12px;
+            background-color: #d1d1d1;
+            display: inline-block;
+            border-radius: 50%;
+        }
+
+        .scrollable-container {
+            flex-grow: 1;
+            overflow-x: auto;
+            overflow-y: auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .scrollable-container::-webkit-scrollbar {
+            height: 10px;
+            width: 10px;
+        }
+        .scrollable-container::-webkit-scrollbar-thumb {
+            background-color: #999;
+            border-radius: 10px;
+        }
+        .scrollable-container::-webkit-scrollbar-track {
+            background-color: #eee;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            white-space: nowrap;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        th, td {
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            padding: 10px 16px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        /* Column header row */
+        thead tr:first-child th {
+            background-color: #0078d4;
+            color: #fff;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        /* Sticky first column (service name) */
+        td:first-child, th:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background: #fff;
+            text-align: left;
+            min-width: 280px;
+            max-width: 350px;
+            font-weight: 500;
+        }
+        thead tr:first-child th:first-child {
+            z-index: 15;
+            background: #005a9e;
+        }
+
+        /* Category rows */
+        .category-row td {
+            background: #f0f6ff !important;
+            font-weight: 700;
+            font-size: 15px;
+            color: #0058a3;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid #0078d4;
+            letter-spacing: 0.3px;
+        }
+
+        /* Alternating rows */
+        tbody tr:nth-child(even):not(.category-row) {
+            background-color: #fafafa;
+        }
+        tbody tr:nth-child(even):not(.category-row) td:first-child {
+            background-color: #fafafa;
+        }
+        tbody tr:nth-child(odd):not(.category-row) td:first-child {
+            background-color: #fff;
+        }
+
+        /* Hover */
+        tbody tr:not(.category-row):hover {
+            background-color: #e8f4fd !important;
+        }
+        tbody tr:not(.category-row):hover td:first-child {
+            background-color: #e8f4fd !important;
+        }
+
+        /* Status cells */
+        .status-ga {
+            color: #107c10;
+            font-weight: 600;
+        }
+        .status-preview {
+            color: #0078d4;
+            font-weight: 600;
+        }
+        .status-hybrid {
+            color: #e07000;
+            font-weight: 600;
+        }
+        .status-na {
+            color: #999;
+        }
+
+        /* Service link */
+        .service-link {
+            color: #0058a3;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .service-link:hover {
+            text-decoration: underline;
+            color: #0078d4;
+        }
+
+        .link-icon {
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        tr:hover .link-icon {
+            opacity: 1;
+        }
+
+        /* Tooltip */
+        .info-tip {
+            position: relative;
+            cursor: help;
+        }
+        .info-tip .tip-text {
+            visibility: hidden;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 100;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: normal;
+            width: 260px;
+            font-size: 12px;
+            font-weight: 400;
+            line-height: 1.4;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .info-tip:hover .tip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .counts-bar {
+            display: flex;
+            gap: 32px;
+            margin-top: 10px;
+        }
+        .count-box {
+            text-align: center;
+        }
+        .count-box .num {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .count-box .label {
+            font-size: 11px;
+            color: #a0cfff;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 900px) {
+            .filters {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            td:first-child, th:first-child {
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header-content">
+        <h1>☁️ Azure Service Availability on Azure Local</h1>
+        <p>A single-page reference showing which Azure services run on <strong>Azure Local</strong> (formerly Azure Stack HCI). Quickly identify whether a service runs <strong>100% on-premises</strong>, operates as a <strong>hybrid</strong> cloud-connected service, or is available in <strong>disconnected/air-gapped</strong> environments. Click any service name to open its official documentation.</p>
+        <p style="margin-top:8px;">© Microsoft 2026. This page is for informational purposes only. Service availability may change. Always verify with <a href="https://learn.microsoft.com/en-us/azure/azure-local/overview" target="_blank">official Azure Local documentation</a>.</p>
+        <div class="counts-bar">
+            <div class="count-box">
+                <div class="num" id="count-total">0</div>
+                <div class="label">Total Services</div>
+            </div>
+            <div class="count-box">
+                <div class="num" id="count-ga">0</div>
+                <div class="label">Generally Available</div>
+            </div>
+            <div class="count-box">
+                <div class="num" id="count-preview">0</div>
+                <div class="label">In Preview</div>
+            </div>
+            <div class="count-box">
+                <div class="num" id="count-hybrid">0</div>
+                <div class="label">Hybrid Services</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="filter-controls">
+            <input type="text" id="product-search" placeholder="🔍 Search services..." oninput="filterTable()">
+            <select id="category-filter" onchange="filterTable()">
+                <option value="all">All Categories</option>
+            </select>
+            <select id="status-filter" onchange="filterTable()">
+                <option value="all">All Statuses</option>
+                <option value="GA">GA Only</option>
+                <option value="Preview">Preview Only</option>
+                <option value="Hybrid">Hybrid Only</option>
+            </select>
+        </div>
+        <div class="legend">
+            <div class="legend-item"><div class="dot-ga"></div> GA (On-Prem)</div>
+            <div class="legend-item"><div class="dot-preview"></div> Preview</div>
+            <div class="legend-item"><div class="dot-hybrid"></div> Hybrid (Cloud-Connected)</div>
+            <div class="legend-item"><div class="dot-na"></div> Not Available</div>
+        </div>
+    </div>
+
+    <div class="scrollable-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Connected<br><small>Cloud-Managed On-Prem</small></th>
+                    <th>Disconnected<br><small>Air-Gapped / Sovereign</small></th>
+                    <th>Deployment Model</th>
+                    <th>Status</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody id="data-rows"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+const services = [
+    // ─── COMPUTE ─────────────────────────────────────────────
+    { category: "Compute" },
+    {
+        name: "Arc VM Management",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/azure-arc-vm-management-overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Provision & manage Windows/Linux VMs on Azure Local via Azure Arc, portal, CLI, ARM templates."
+    },
+    {
+        name: "Azure Kubernetes Service (AKS) Arc",
+        url: "https://learn.microsoft.com/en-us/azure/aks/hybrid/",
+        connected: "GA",
+        disconnected: "Preview",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Managed Kubernetes on Azure Local. Create clusters from Azure portal. GitOps, monitoring, policy support."
+    },
+    {
+        name: "Azure Virtual Desktop (AVD)",
+        url: "https://learn.microsoft.com/en-us/azure/virtual-desktop/azure-local-overview",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Session hosts run on Azure Local; AVD control plane remains in Azure cloud. Low-latency VDI on-prem."
+    },
+    {
+        name: "VM Extensions (Arc)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/servers/manage-vm-extensions",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Install, manage, and remove VM extensions on Arc-enabled servers on Azure Local."
+    },
+    {
+        name: "GPU Workloads (NVIDIA)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/use-gpu-with-clustered-vm",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "GPU passthrough and DDA for AI/ML inference. Supports NVIDIA RTX PRO 6000 Blackwell and others."
+    },
+    {
+        name: "Trusted Launch for VMs",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/trusted-launch-vm-overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Secure Boot and vTPM for VMs on Azure Local. Defence against boot-level attacks."
+    },
+
+    // ─── APPLICATION PLATFORM ─────────────────────────────────
+    { category: "Application Platform" },
+    {
+        name: "App Service (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/app-service/overview-arc-integration",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Run Web Apps, APIs, and Functions on AKS Arc on Azure Local. Requires Arc connection for management."
+    },
+    {
+        name: "Azure Functions (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-functions/functions-kubernetes-keda",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Serverless functions on Kubernetes (AKS Arc). Event-driven scaling via KEDA."
+    },
+    {
+        name: "Azure API Management (Self-hosted Gateway)",
+        url: "https://learn.microsoft.com/en-us/azure/api-management/self-hosted-gateway-overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Self-hosted API gateway container runs on-prem. Control plane remains in Azure."
+    },
+    {
+        name: "Event Grid on Kubernetes (Arc)",
+        url: "https://learn.microsoft.com/en-us/azure/event-grid/kubernetes/overview",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Event-driven architecture on Kubernetes clusters on Azure Local."
+    },
+
+    // ─── DATA SERVICES ────────────────────────────────────────
+    { category: "Data Services" },
+    {
+        name: "SQL Managed Instance (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/data/managed-instance-overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Near-full Azure SQL MI parity. General Purpose & Business Critical tiers. Data stays on-prem."
+    },
+    {
+        name: "SQL Server (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/sql/sql-server/azure-arc/overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Extend Azure management to existing SQL Server instances. Monitoring, security, and governance."
+    },
+    {
+        name: "PostgreSQL (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/data/what-is-azure-arc-enabled-postgres-hyperscale",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Managed PostgreSQL Hyperscale on Kubernetes via Azure Arc data services."
+    },
+    {
+        name: "Azure Managed Lustre",
+        url: "https://learn.microsoft.com/en-us/azure/azure-managed-lustre/amlfs-overview",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "High-performance parallel file system for HPC/AI workloads. Preview on Azure Local."
+    },
+
+    // ─── AI & MACHINE LEARNING ────────────────────────────────
+    { category: "AI & Machine Learning" },
+    {
+        name: "Foundry Local (AI Model Inference)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/foundry-local",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Run LLMs, SLMs, and multimodal AI models fully on-prem. Zero cloud dependency. GPU/NPU support."
+    },
+    {
+        name: "Azure IoT Operations",
+        url: "https://learn.microsoft.com/en-us/azure/iot-operations/overview",
+        connected: "GA",
+        disconnected: "Preview",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Edge-native IoT data plane. OPC-UA, MQTT, ONVIF protocols. Real-time analytics on-prem."
+    },
+    {
+        name: "Machine Learning (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/machine-learning/how-to-attach-kubernetes-anywhere",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Attach AKS Arc clusters as ML compute targets. Train and deploy models on-premises."
+    },
+
+    // ─── IDENTITY & SECURITY ──────────────────────────────────
+    { category: "Identity & Security" },
+    {
+        name: "Microsoft Entra ID (Azure AD)",
+        url: "https://learn.microsoft.com/en-us/entra/identity/",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Cloud identity provider. Authentication, RBAC, Conditional Access, MFA for Azure Local resources. Requires cloud connectivity."
+    },
+    {
+        name: "Azure Key Vault (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/servers/managed-identity-authentication",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Secrets & certificates fetched from cloud Key Vault via managed identity on Arc-connected servers."
+    },
+    {
+        name: "Microsoft Defender for Cloud",
+        url: "https://learn.microsoft.com/en-us/azure/defender-for-cloud/",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Threat protection, security posture management for Arc-enabled servers, VMs, SQL, and Kubernetes."
+    },
+    {
+        name: "Azure Confidential VMs",
+        url: "https://learn.microsoft.com/en-us/azure/confidential-computing/",
+        connected: "Preview",
+        disconnected: "Preview",
+        model: "On-Premises",
+        status: "Preview",
+        notes: "Hardware-based VM isolation. Confidential computing with secure enclaves on Azure Local."
+    },
+    {
+        name: "Managed Identity (Arc)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/servers/managed-identity-authentication",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "System-assigned managed identity for Arc-enabled servers. Authenticate to Azure services without credentials."
+    },
+    {
+        name: "Network Security Groups",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/manage-network-security-groups",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Software-defined network security rules for VMs on Azure Local. Filter traffic locally."
+    },
+
+    // ─── MANAGEMENT & GOVERNANCE ──────────────────────────────
+    { category: "Management & Governance" },
+    {
+        name: "Azure Arc (Control Plane)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-arc/overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Core management plane extending Azure governance, RBAC, policy, and monitoring to on-prem resources."
+    },
+    {
+        name: "Azure Portal (Management)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/azure-portal",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Full portal experience for managing Azure Local clusters, VMs, AKS, and extensions."
+    },
+    {
+        name: "Azure Policy (Arc-enabled)",
+        url: "https://learn.microsoft.com/en-us/azure/governance/policy/overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Enforce organizational standards and assess compliance at scale for Arc-enabled resources."
+    },
+    {
+        name: "Azure Monitor & Insights",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/concepts/monitoring-overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Metrics, logs, alerts, and workbooks for Azure Local infrastructure, VMs, and Kubernetes. Requires cloud sync."
+    },
+    {
+        name: "Azure Update Manager",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/update/azure-update-manager-23h2",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Centralized OS and firmware update management from Azure for all Azure Local instances."
+    },
+    {
+        name: "Windows Admin Center",
+        url: "https://learn.microsoft.com/en-us/windows-server/manage/windows-admin-center/overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Browser-based server management tool. Runs fully on-prem. Integrates with Azure portal via Arc extension."
+    },
+    {
+        name: "Azure Resource Manager (ARM/Bicep/Terraform)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-resource-manager/",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Infrastructure-as-code for provisioning Azure Local resources. ARM templates, Bicep, Terraform, CLI, PowerShell."
+    },
+    {
+        name: "Azure Automation",
+        url: "https://learn.microsoft.com/en-us/azure/automation/overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Hybrid Runbook Workers execute automation on Azure Local nodes. Cloud-orchestrated, on-prem execution."
+    },
+
+    // ─── NETWORKING ───────────────────────────────────────────
+    { category: "Networking" },
+    {
+        name: "Software Defined Networking (SDN)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/sdn-overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Virtual networks, load balancers, and gateways. Fully on-prem SDN stack."
+    },
+    {
+        name: "Azure VPN / ExpressRoute",
+        url: "https://learn.microsoft.com/en-us/azure/vpn-gateway/vpn-gateway-about-vpngateways",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Hybrid connectivity from Azure Local to Azure regions for workload extension and DR."
+    },
+    {
+        name: "Azure Extended Network",
+        url: "https://learn.microsoft.com/en-us/windows-server/manage/windows-admin-center/azure/azure-extended-network",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Stretch on-premises subnets into Azure for seamless VM migration without IP changes."
+    },
+
+    // ─── STORAGE ──────────────────────────────────────────────
+    { category: "Storage" },
+    {
+        name: "Storage Spaces Direct (S2D)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/concepts/storage-spaces-direct-overview",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Software-defined hyper-converged storage. Core storage layer of Azure Local. Fully on-prem."
+    },
+    {
+        name: "Azure Backup (MABS)",
+        url: "https://learn.microsoft.com/en-us/azure/backup/back-up-azure-stack-hyperconverged-infrastructure-virtual-machines",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Back up Azure Local VMs to Azure using Microsoft Azure Backup Server. Cloud-stored recovery points."
+    },
+    {
+        name: "Azure Site Recovery",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/azure-site-recovery",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Disaster recovery: replicate Azure Local VMs to Azure. Automated failover and failback."
+    },
+    {
+        name: "Azure File Sync",
+        url: "https://learn.microsoft.com/en-us/azure/storage/file-sync/file-sync-introduction",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Sync on-prem file servers with Azure Files. Cloud tiering, multi-site sync."
+    },
+
+    // ─── SOVEREIGN & DISCONNECTED ─────────────────────────────
+    { category: "Sovereign & Disconnected Operations" },
+    {
+        name: "Disconnected Operations (Air-Gapped)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/overview",
+        connected: "N/A",
+        disconnected: "Preview",
+        model: "On-Premises",
+        status: "Preview",
+        notes: "Run Azure Local with zero cloud connectivity. Offline updates, local management, manual licensing."
+    },
+    {
+        name: "Microsoft 365 Local",
+        url: "https://www.microsoft.com/en-us/microsoft-365",
+        connected: "N/A",
+        disconnected: "Preview",
+        model: "On-Premises",
+        status: "Preview",
+        notes: "Exchange, SharePoint, Skype for Business running fully on-prem for sovereign/air-gapped environments."
+    },
+    {
+        name: "Azure Verification for VMs",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/deploy/azure-verification",
+        connected: "GA",
+        disconnected: "GA",
+        model: "On-Premises",
+        status: "GA",
+        notes: "Platform attestation service. Enables Azure-exclusive workloads to run on Azure Local."
+    },
+
+    // ─── MIGRATION ────────────────────────────────────────────
+    { category: "Migration" },
+    {
+        name: "Azure Migrate",
+        url: "https://learn.microsoft.com/en-us/azure/migrate/",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Discover, assess, and migrate VMs from VMware, Hyper-V, or physical servers to Azure Local."
+    },
+    {
+        name: "VMware Migration to Azure Local",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/migrate/migration-azure-migrate-vmware",
+        connected: "Preview",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "Preview",
+        notes: "Migrate VMware VMs to Azure Local using Azure Migrate. Agentless replication."
+    },
+
+    // ─── OBSERVABILITY & SUPPORT ──────────────────────────────
+    { category: "Observability & Support" },
+    {
+        name: "Azure Local Observability",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/concepts/observability",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Telemetry and diagnostics collection. Helps Microsoft support resolve issues faster."
+    },
+    {
+        name: "Remote Support",
+        url: "https://learn.microsoft.com/en-us/azure/azure-local/manage/get-remote-support",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Enable Microsoft support to remotely access and diagnose Azure Local issues securely."
+    },
+    {
+        name: "Log Analytics (Azure Monitor)",
+        url: "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/log-analytics-overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Centralized log collection and KQL queries for Azure Local infrastructure and workloads."
+    },
+    {
+        name: "Azure Monitor Alerts",
+        url: "https://learn.microsoft.com/en-us/azure/azure-monitor/alerts/alerts-overview",
+        connected: "GA",
+        disconnected: "N/A",
+        model: "Hybrid",
+        status: "GA",
+        notes: "Proactive alerting on metrics and logs from Azure Local clusters and workloads."
+    }
+];
+
+// ─── RENDER ──────────────────────────────────────────────
+function statusCell(val) {
+    if (val === "GA") return '<span class="status-ga"><span class="dot-ga" style="display:inline-block;vertical-align:middle;margin-right:5px;"></span> GA</span>';
+    if (val === "Preview") return '<span class="status-preview"><span class="dot-preview" style="display:inline-block;vertical-align:middle;margin-right:5px;"></span> Preview</span>';
+    if (val === "N/A") return '<span class="status-na">—</span>';
+    return val;
+}
+
+function modelBadge(val) {
+    if (val === "On-Premises") return '<span style="background:#e6f4e6;color:#107c10;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">⬤ On-Premises</span>';
+    if (val === "Hybrid") return '<span style="background:#fff3e0;color:#e07000;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">◐ Hybrid</span>';
+    return val;
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('data-rows');
+    tbody.innerHTML = '';
+    data.forEach(item => {
+        if (item.category) {
+            tbody.innerHTML += `<tr class="category-row"><td colspan="6">${item.category}</td></tr>`;
+        } else {
+            tbody.innerHTML += `
+                <tr>
+                    <td><a class="service-link" href="${item.url}" target="_blank">${item.name} <span class="link-icon">↗</span></a></td>
+                    <td>${statusCell(item.connected)}</td>
+                    <td>${statusCell(item.disconnected)}</td>
+                    <td>${modelBadge(item.model)}</td>
+                    <td>${statusCell(item.status)}</td>
+                    <td class="info-tip" style="text-align:left;max-width:320px;white-space:normal;font-size:12px;color:#555;">
+                        ${item.notes.substring(0, 60)}${item.notes.length > 60 ? '…' : ''}
+                        <span class="tip-text">${item.notes}</span>
+                    </td>
+                </tr>`;
+        }
+    });
+}
+
+// ─── FILTERS ─────────────────────────────────────────────
+function filterTable() {
+    const search = document.getElementById('product-search').value.toLowerCase();
+    const catFilter = document.getElementById('category-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+
+    const rows = document.querySelectorAll('#data-rows tr');
+    let currentCategory = '';
+    let categoryHasVisible = false;
+    let categoryRow = null;
+
+    rows.forEach(row => {
+        if (row.classList.contains('category-row')) {
+            // Before processing a new category, show/hide the previous one
+            if (categoryRow) {
+                categoryRow.style.display = categoryHasVisible ? '' : 'none';
+            }
+            currentCategory = row.querySelector('td').textContent;
+            categoryRow = row;
+            categoryHasVisible = false;
+            return;
+        }
+
+        const name = row.querySelector('td')?.textContent?.toLowerCase() || '';
+        const notes = row.querySelector('.info-tip .tip-text')?.textContent?.toLowerCase() || '';
+        const matchesSearch = !search || name.includes(search) || notes.includes(search);
+        const matchesCat = catFilter === 'all' || currentCategory === catFilter;
+
+        let matchesStatus = true;
+        if (statusFilter !== 'all') {
+            const statusText = row.querySelector('td:nth-child(5)')?.textContent?.trim() || '';
+            const modelText = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+            if (statusFilter === 'GA') matchesStatus = statusText.includes('GA');
+            else if (statusFilter === 'Preview') matchesStatus = statusText.includes('Preview');
+            else if (statusFilter === 'Hybrid') matchesStatus = modelText.includes('Hybrid');
+        }
+
+        const show = matchesSearch && matchesCat && matchesStatus;
+        row.style.display = show ? '' : 'none';
+        if (show) categoryHasVisible = true;
+    });
+    // Handle the last category
+    if (categoryRow) {
+        categoryRow.style.display = categoryHasVisible ? '' : 'none';
+    }
+}
+
+// ─── INIT ────────────────────────────────────────────────
+function init() {
+    // Populate category filter
+    const cats = [...new Set(services.filter(s => s.category).map(s => s.category))];
+    const catSelect = document.getElementById('category-filter');
+    cats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        catSelect.appendChild(opt);
+    });
+
+    // Counts
+    const svcOnly = services.filter(s => !s.category);
+    document.getElementById('count-total').textContent = svcOnly.length;
+    document.getElementById('count-ga').textContent = svcOnly.filter(s => s.status === 'GA').length;
+    document.getElementById('count-preview').textContent = svcOnly.filter(s => s.status === 'Preview').length;
+    document.getElementById('count-hybrid').textContent = svcOnly.filter(s => s.model === 'Hybrid').length;
+
+    renderTable(services);
+}
+
+init();
+</script>
+</body>
+</html>
